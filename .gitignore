@@ -1,0 +1,2 @@
+data/raw/user_behavior_processed.csv
+data/processed/*.parquet
