@@ -68,3 +68,5 @@ with open("../results/quality_report.txt", "w", encoding="utf-8") as f:
     f.write(f"最早时间：{df['time'].min()}\n")
     f.write(f"最晚时间：{df['time'].max()}\n")
 print("质量报告生成成功！")
+output_path = "../data/processed/user_behavior_cleaned.csv"
+df.to_csv(output_path, index=False,encoding="utf-8-sig")
