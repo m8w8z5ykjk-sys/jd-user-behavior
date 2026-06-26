@@ -1,2 +1,3 @@
 data/raw/user_behavior_processed.csv
 data/processed/*.parquet
+data/processed/user_behavior_cleaned.csv
