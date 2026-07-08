@@ -26,12 +26,12 @@ user_recent_30_behavior = (df_recent.groupby("user_id").size().reset_index(name=
 #给用户划分活跃度等级
 def active_level(count):
     if count >= 100:
-        return "高活跃用户"
+        return "短期高活跃用户"
     elif count >= 30:
-        return "中活跃用户"
+        return "短期中活跃用户"
     else:
-        return "低活跃用户"
-user_recent_30_behavior["active_level"] = user_recent_30_behavior["recent_30_behavior_count"].apply(active_level)
+        return "短期低活跃用户"
+user_recent_30_behavior["short_term_active_level"] = user_recent_30_behavior["recent_30_behavior_count"].apply(active_level)
 print(user_recent_30_behavior.head())
 #计算每个用户最后一次活跃日期
 user_last_active = (df.groupby("user_id")["date"].max().reset_index(name="last_active_date"))
@@ -45,13 +45,14 @@ user_dates["is_new_streak"] = user_dates["date_diff"] != 1
 user_dates["streak_group"] = (user_dates.groupby("user_id")["is_new_streak"].cumsum())
 user_streak = (user_dates.groupby(["user_id", "streak_group"]).size().reset_index(name="streak_days"))
 user_max_streak = (user_streak.groupby("user_id")["streak_days"].max().reset_index(name="max_continuous_active_days"))
-#合并所有用户生命周期特征
+#合并所有短期用户生命周期特征
 user_lifecycle_features = user_total_behavior.merge(user_active_days,on="user_id",how="left")
 user_lifecycle_features = user_lifecycle_features.merge(user_recent_30_behavior,on="user_id",how="left")
 user_lifecycle_features = user_lifecycle_features.merge(user_last_active,on="user_id",how="left")
 user_lifecycle_features = user_lifecycle_features.merge(user_max_streak,on="user_id",how="left")
 print(user_lifecycle_features.head())
-#保存用户生命周期特征
+#保存短期用户生命周期特征
 USER_LIFECYCLE_OUTPUT = OUTPUT_DIR   / "user_lifecycle_features.parquet"
 user_lifecycle_features.to_parquet(USER_LIFECYCLE_OUTPUT, index=False)
-print("用户生命周期特征已保存：", USER_LIFECYCLE_OUTPUT)
+print("短期用户生命周期特征已保存：", USER_LIFECYCLE_OUTPUT)
+#由于当前数据集时间跨度较短，用户行为不足以体现完整生命周期阶段变化
