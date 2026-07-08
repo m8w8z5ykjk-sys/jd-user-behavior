@@ -59,4 +59,5 @@ user_time_behavior_features = user_total_behavior.merge(user_peak_hour,on="user_
 user_time_behavior_features = user_time_behavior_features.merge(user_peak_period,on="user_id",how="left")
 user_time_behavior_features = user_time_behavior_features.merge(user_night_behavior[["user_id", "night_behavior_count", "night_behavior_ratio"]],on="user_id",how="left")
 
+user_time_behavior_features.to_parquet(OUTPUT_DIR / "time_features.parquet", index=False)
 print("用户时间行为特征已保存：")
