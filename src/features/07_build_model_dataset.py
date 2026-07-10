@@ -113,3 +113,58 @@ print("特征重要性报告已保存：")
 print(IMPORTANCE_OUTPUT)
 print("相关性报告已保存：")
 print(CORRELATION_OUTPUT)
+
+
+
+#分层抽样
+from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
+import numpy as np
+X_final = final_dataset.drop(columns=["label"])
+y_final = final_dataset["label"]
+X_train, X_temp, y_train, y_temp = train_test_split(X_final, y_final,test_size=0.3,random_state=42,stratify=y_final)
+X_valid, X_test, y_valid, y_test = train_test_split(X_temp, y_temp,test_size=1/3,random_state=42,stratify=y_temp)
+train_dataset = X_train.copy()
+train_dataset["label"] = y_train.values
+valid_dataset = X_valid.copy()
+valid_dataset["label"] = y_valid.values
+test_dataset = X_test.copy()
+test_dataset["label"] = y_test.values
+print("训练集大小：", train_dataset.shape)
+print(train_dataset["label"].value_counts(normalize=True))
+print("验证集大小：", valid_dataset.shape)
+print(valid_dataset["label"].value_counts(normalize=True))
+print("测试集大小：", test_dataset.shape)
+print(test_dataset["label"].value_counts(normalize=True))
+TRAIN_OUTPUT = OUTPUT_DIR / "train_dataset.parquet"
+VALID_OUTPUT = OUTPUT_DIR / "valid_dataset.parquet"
+TEST_OUTPUT = OUTPUT_DIR / "test_dataset.parquet"
+train_dataset.to_parquet(TRAIN_OUTPUT, index=False)
+valid_dataset.to_parquet(VALID_OUTPUT, index=False)
+test_dataset.to_parquet(TEST_OUTPUT, index=False)
+
+print("训练集已保存：", TRAIN_OUTPUT)
+print("验证集已保存：", VALID_OUTPUT)
+print("测试集已保存：", TEST_OUTPUT)
+
+#对比SMOTE过采样、欠采样、类别权重调整
+from imblearn.over_sampling import SMOTE
+# 方案1：欠采样
+print("方案1：欠采样后的训练集分布")
+print(train_dataset["label"].value_counts())
+# 方案2：SMOTE过采样
+smote = SMOTE(random_state=42)
+X_train_smote, y_train_smote = smote.fit_resample(X_train,y_train)
+train_smote_dataset = pd.DataFrame(X_train_smote, columns=X_train.columns)
+train_smote_dataset["label"] = y_train_smote
+print("方案2：SMOTE过采样后的训练集分布")
+print(train_smote_dataset["label"].value_counts())
+# 方案3：类别权重调整
+class_weights = compute_class_weight(class_weight="balanced",classes=np.array([0, 1]),y=y_train)
+class_weight_dict = {0: class_weights[0],1: class_weights[1]}
+print("方案3：类别权重")
+print(class_weight_dict)
+
+SMOTE_OUTPUT = OUTPUT_DIR / "train_dataset_smote.parquet"
+train_smote_dataset.to_parquet(SMOTE_OUTPUT, index=False)
+print("SMOTE训练集已保存：", SMOTE_OUTPUT)
