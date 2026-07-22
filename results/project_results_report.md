@@ -56,3 +56,91 @@
 ## 8. 下一阶段
 
 下一阶段将进行逻辑回归、XGBoost和LightGBM模型训练，并对比AUC、准确率、召回率和F1分数。
+
+
+
+# 传统机器学习模型构建与调优报告
+
+## 1. 项目目标
+
+本阶段基于清洗和特征工程后的京东用户行为数据，构建用户未来7天是否购买的二分类预测模型。
+
+按照任务要求，计划实现以下三种传统机器学习模型：
+
+1. Logistic Regression
+2. XGBoost
+3. LightGBM
+
+每种模型均需要完成基础训练，并使用Optuna进行自动超参数搜索。模型调优以ROC-AUC为核心指标，同时对比Accuracy、Precision、Recall和F1-score。
+
+---
+
+## 2. 数据集说明
+
+模型使用的数据文件包括：
+
+- `train_dataset.parquet`：训练集
+- `valid_dataset.parquet`：验证集
+- `test_dataset.parquet`：测试集
+
+其中：
+
+- 训练集用于拟合模型参数；
+- 验证集用于Optuna参数搜索和模型选择；
+- 测试集仅用于最终模型评价，避免测试集信息泄露。
+
+目标变量为：
+
+- `label = 1`：用户未来7天发生购买行为；
+- `label = 0`：用户未来7天未发生购买行为。
+
+由于购买样本少于未购买样本，本项目属于类别不平衡二分类问题。
+
+---
+
+## 3. 逻辑回归基础模型
+
+首先构建逻辑回归基础模型，主要参数包括：
+
+- `C = 1.0`
+- `penalty = l2`
+- `solver = liblinear`
+- `class_weight = balanced`
+- `max_iter = 2000`
+
+其中，`class_weight="balanced"`用于提高少数类购买样本在训练过程中的权重。
+
+基础模型评价指标保存于：
+
+- `logistic_regression_metrics.csv`
+
+主要评价指标包括：
+
+- Accuracy
+- Precision
+- Recall
+- F1-score
+- ROC-AUC
+
+---
+
+## 4. Optuna自动调参
+
+使用Optuna对逻辑回归模型进行自动超参数搜索。
+
+主要搜索参数包括：
+
+- `C`：控制正则化强度；
+- `penalty`：选择L1或L2正则化。
+
+搜索范围：
+
+- `C`：0.0001至100，采用对数尺度搜索；
+- `penalty`：L1、L2。
+
+Optuna共执行30次参数试验，每次使用一组不同参数训练模型，并计算验证集ROC-AUC。
+
+优化方向为：
+
+```text
+maximize

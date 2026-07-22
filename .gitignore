@@ -3,3 +3,4 @@ data/processed/*.parquet
 data/processed/user_behavior_cleaned.csv
 data/processed/jd_behavior.db
 data/processed/*.csv
+results/project_results_report.md
