@@ -1,29 +1,57 @@
 """
 文件名称：09_xgboost.py
 
-功能说明：
-1. 读取训练集、验证集和测试集。
-2. 完成XGBoost基础分类模型训练。
-3. 计算基础模型的Accuracy、Precision、Recall、F1和ROC-AUC。
-4. 使用Optuna自动搜索XGBoost关键参数。
-5. 以验证集ROC-AUC作为核心优化指标。
-6. 使用最优参数重新训练XGBoost模型。
-7. 在测试集上完成最终评价。
-8. 保存模型评价结果、最佳参数、调参记录、预测结果和最优模型。
+功能：
+1. 读取07_build_model_dataset.py生成的训练集、验证集和测试集；
+2. 完成XGBoost基础分类模型训练；
+3. 计算Accuracy、Precision、Recall、F1和ROC-AUC；
+4. 使用Optuna自动搜索XGBoost关键参数；
+5. 以验证集ROC-AUC作为核心优化指标；
+6. 使用最优参数重新训练XGBoost模型；
+7. 在测试集上完成最终评价；
+8. 保存模型指标、最佳参数、调参记录、预测结果和混淆矩阵；
+9. 保存最优XGBoost模型及训练集缺失值填充中位数；
+10. 保存供模型融合使用的统一格式预测文件和模型文件；
+11. 将processed输出和results输出分别保存到以当前Python文件名命名的目录。
 
-输入文件：
-- data/processed/train_dataset.parquet
-- data/processed/valid_dataset.parquet
-- data/processed/test_dataset.parquet
+输入文件名：
+1. data/processed/07_build_model_dataset/train_dataset.parquet
+2. data/processed/07_build_model_dataset/valid_dataset.parquet
+3. data/processed/07_build_model_dataset/test_dataset.parquet
 
-输出文件：
-- results/xgboost_metrics.csv
-- results/xgboost_optuna_best_params.csv
-- results/xgboost_optuna_trials.csv
-- results/xgboost_test_predictions.csv
-- results/xgboost_confusion_matrix.csv
-- results/models/best_xgboost_optuna.pkl
+processed输出目录：
+- data/processed/09_xgboost/
+
+processed输出文件名：
+1. best_xgboost_optuna.pkl
+2. xgboost_feature_medians.pkl
+3. xgboost_model.joblib
+
+results输出目录：
+- results/09_xgboost/
+
+results输出文件名：
+1. xgboost_metrics.csv
+2. xgboost_optuna_best_params.csv
+3. xgboost_optuna_trials.csv
+4. xgboost_test_predictions.csv
+5. xgboost_confusion_matrix.csv
+6. xgboost_predictions.csv
+
+目录规则：
+- PKL、JOBLIB等模型和中间对象保存到：
+  data/processed/09_xgboost/
+- CSV等分析结果保存到：
+  results/09_xgboost/
+- 两个目录均由程序自动创建。
+
+路径检查：
+- 当前文件应位于项目根目录/src/models/；
+- 项目根目录通过Path(__file__).resolve().parents[2]自动定位；
+- 输入文件读取自data/processed/07_build_model_dataset/；
+- 所有输出都放入09_xgboost.py对应的专属目录。
 """
+
 
 from pathlib import Path
 
@@ -51,21 +79,44 @@ from xgboost import XGBClassifier
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-PROCESSED_DIR = BASE_DIR / "data" / "processed"
-RESULTS_DIR = BASE_DIR / "results"
-MODEL_DIR = RESULTS_DIR / "models"
+PROCESSED_INPUT_DIR = (
+    BASE_DIR
+    / "data"
+    / "processed"
+    / "07_build_model_dataset"
+)
 
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-MODEL_DIR.mkdir(parents=True, exist_ok=True)
+PROCESSED_OUTPUT_DIR = (
+    BASE_DIR
+    / "data"
+    / "processed"
+    / "09_xgboost"
+)
+
+RESULTS_OUTPUT_DIR = (
+    BASE_DIR
+    / "results"
+    / "09_xgboost"
+)
+
+PROCESSED_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ==================================================
 # 2. 设置数据文件路径
 # ==================================================
 
-TRAIN_PATH = PROCESSED_DIR / "train_dataset.parquet"
-VALID_PATH = PROCESSED_DIR / "valid_dataset.parquet"
-TEST_PATH = PROCESSED_DIR / "test_dataset.parquet"
+TRAIN_PATH = PROCESSED_INPUT_DIR / "train_dataset.parquet"
+VALID_PATH = PROCESSED_INPUT_DIR / "valid_dataset.parquet"
+TEST_PATH = PROCESSED_INPUT_DIR / "test_dataset.parquet"
+
+print("项目根目录：", BASE_DIR)
+print("训练集：", TRAIN_PATH)
+print("验证集：", VALID_PATH)
+print("测试集：", TEST_PATH)
+print("processed输出目录：", PROCESSED_OUTPUT_DIR)
+print("results输出目录：", RESULTS_OUTPUT_DIR)
 
 
 # ==================================================
@@ -547,7 +598,7 @@ metrics_df = pd.DataFrame(
 )
 
 metrics_path = (
-    RESULTS_DIR /
+    RESULTS_OUTPUT_DIR /
     "xgboost_metrics.csv"
 )
 
@@ -575,7 +626,7 @@ best_params_df = pd.DataFrame(
 )
 
 best_params_path = (
-    RESULTS_DIR /
+    RESULTS_OUTPUT_DIR /
     "xgboost_optuna_best_params.csv"
 )
 
@@ -593,7 +644,7 @@ best_params_df.to_csv(
 trials_df = study.trials_dataframe()
 
 trials_path = (
-    RESULTS_DIR /
+    RESULTS_OUTPUT_DIR /
     "xgboost_optuna_trials.csv"
 )
 
@@ -615,7 +666,7 @@ prediction_df = pd.DataFrame({
 })
 
 prediction_path = (
-    RESULTS_DIR /
+    RESULTS_OUTPUT_DIR /
     "xgboost_test_predictions.csv"
 )
 
@@ -625,10 +676,8 @@ prediction_df.to_csv(
     encoding="utf-8-sig"
 )
 
-# 同时保存第四项Stacking可直接读取的统一格式预测文件
-FUSION_RESULT_DIR = BASE_DIR / "src" / "models" / "results" / "model_comparison"
-FUSION_RESULT_DIR.mkdir(parents=True, exist_ok=True)
-
+# 同时保存供Stacking读取的统一格式预测文件
+# 该文件仍保存到09_xgboost.py对应的results专属目录
 fusion_prediction_df = pd.DataFrame({
     "label": y_test.reset_index(drop=True).to_numpy(),
     "probability": np.asarray(test_prob).reshape(-1)
@@ -639,7 +688,7 @@ for id_col in ["user_id", "item_id", "user_id_idx", "item_id_idx"]:
     if id_col in test_df.columns:
         fusion_prediction_df[id_col] = test_df[id_col].reset_index(drop=True).to_numpy()
 
-fusion_prediction_path = FUSION_RESULT_DIR / "xgboost_predictions.csv"
+fusion_prediction_path = RESULTS_OUTPUT_DIR / "xgboost_predictions.csv"
 fusion_prediction_df.to_csv(
     fusion_prediction_path,
     index=False,
@@ -671,7 +720,7 @@ confusion_matrix_df = pd.DataFrame(
 )
 
 confusion_matrix_path = (
-    RESULTS_DIR /
+    RESULTS_OUTPUT_DIR /
     "xgboost_confusion_matrix.csv"
 )
 
@@ -686,7 +735,7 @@ confusion_matrix_df.to_csv(
 # ==================================================
 
 model_path = (
-    MODEL_DIR /
+    PROCESSED_OUTPUT_DIR /
     "best_xgboost_optuna.pkl"
 )
 
@@ -695,7 +744,7 @@ joblib.dump(
     model_path
 )
 
-fusion_model_path = FUSION_RESULT_DIR / "xgboost_model.joblib"
+fusion_model_path = PROCESSED_OUTPUT_DIR / "xgboost_model.joblib"
 joblib.dump(
     best_model,
     fusion_model_path
@@ -708,7 +757,7 @@ print("XGBoost融合模型文件已保存：", fusion_model_path)
 # ==================================================
 
 median_path = (
-    MODEL_DIR /
+    PROCESSED_OUTPUT_DIR /
     "xgboost_feature_medians.pkl"
 )
 
@@ -719,7 +768,36 @@ joblib.dump(
 
 
 # ==================================================
-# 29. 输出最终总结
+# 29. 检查输出文件
+# ==================================================
+
+expected_outputs = [
+    metrics_path,
+    best_params_path,
+    trials_path,
+    prediction_path,
+    fusion_prediction_path,
+    confusion_matrix_path,
+    model_path,
+    fusion_model_path,
+    median_path
+]
+
+failed_outputs = [
+    str(path)
+    for path in expected_outputs
+    if not path.exists()
+]
+
+if failed_outputs:
+    raise RuntimeError(
+        "以下输出文件保存失败：\n"
+        + "\n".join(failed_outputs)
+    )
+
+
+# ==================================================
+# 30. 输出最终总结
 # ==================================================
 
 print("\n" + "=" * 60)
