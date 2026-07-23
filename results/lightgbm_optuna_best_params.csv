@@ -1,2 +1,0 @@
-﻿Model,Best_Validation_AUC,n_estimators,learning_rate,num_leaves,max_depth,min_child_samples,subsample,colsample_bytree,reg_alpha,reg_lambda,min_split_gain,scale_pos_weight
-LightGBM,0.8961439073290265,567,0.010508449172945295,126,3,94,0.9957564293066135,0.7197279468090542,0.00990534200041035,1.1089192962469652e-08,4.649562938051006,1.180314778738318
