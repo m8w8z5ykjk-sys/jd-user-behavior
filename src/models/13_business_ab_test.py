@@ -1,21 +1,80 @@
 """
-13_business_ab_test.py
-
-第五项：业务落地模拟设计
+文件名称：13_business_ab_test.py
 
 功能：
-1. 基于模型预测结果设计模拟 A/B 测试方案；
-2. 明确实验组、对照组、核心指标、护栏指标和实验周期；
-3. 使用模型分数筛选高潜用户，并模拟实验组精准营销效果；
-4. 计算转化率、增量购买数、增量收入、营销成本和增量利润；
-5. 给出商品推荐与精准营销优化建议；
-6. 输出实验明细、指标汇总、分层结果、业务建议和可视化图表。
+1. 读取12_model_fusion_explainability.py生成的Stacking测试集预测结果；
+2. 根据模型预测分数筛选高购买概率目标用户；
+3. 按预测分数分层后随机划分实验组和对照组；
+4. 明确A/B测试核心指标、护栏指标、样本量和实验周期；
+5. 模拟精准营销对实验组购买转化率的提升；
+6. 计算转化率、增量购买人数、增量收入、营销成本、增量利润和ROI；
+7. 分析不同预测分层和商品类别的实验表现；
+8. 生成精准营销、商品推荐和逐步上线建议；
+9. 保存实验明细、指标汇总、业务分析报告和可视化图表；
+10. 将本文件产生的所有results输出保存到以当前Python文件名命名的专属目录。
 
-说明：
-- 本脚本不会真实向用户发送营销信息，只进行离线业务模拟。
-- 默认从 results 目录递归查找包含真实标签和模型预测概率的 CSV 文件。
-- 若自动识别失败，请在“用户配置区”手动设置 PREDICTION_FILE、LABEL_COL、SCORE_COL。
+输入文件名：
+1. results/12_model_fusion_explainability/stacking_test_predictions.csv
+   默认输入文件，应至少包含真实标签和Stacking预测概率。
+
+兼容输入：
+- 当默认输入文件不存在时，程序会在results目录下递归搜索包含
+  真实标签和预测概率的CSV文件；
+- 也可以通过PREDICTION_FILE手动指定输入文件；
+- 可通过LABEL_COL和SCORE_COL手动指定标签列和概率列。
+
+输入字段要求：
+- 必需字段：
+  真实标签列、模型预测概率列；
+- 推荐字段：
+  user_id、item_id、item_category、price。
+
+processed输出目录：
+- 本文件不生成需要保存到data/processed的中间数据，因此不创建processed目录。
+
+results输出目录：
+- results/13_business_ab_test/
+
+results输出文件名：
+1. ab_test_user_level_detail.csv
+   用户级实验分组、模型分数和模拟转化结果明细。
+
+2. ab_test_group_metrics.csv
+   实验组和对照组的样本量、购买数、转化率、收入、成本和毛利润。
+
+3. ab_test_effect_summary.csv
+   转化提升、显著性、样本量、增量收入、增量利润和ROI汇总。
+
+4. score_segment_analysis.csv
+   不同模型预测分层下的实验表现。
+
+5. category_recommendation_analysis.csv
+   不同商品类别的目标用户、预测分数、转化率和推荐优先级。
+
+6. business_ab_test_report.md
+   完整A/B测试设计、模拟结果、营销建议和上线决策报告。
+
+7. 01_ab_conversion_rate.png
+   实验组与对照组转化率对比图。
+
+8. 02_ab_gross_profit.png
+   实验组与对照组毛利润对比图。
+
+9. 03_score_segment_conversion.png
+   不同预测分层的转化率对比图。
+
+目录规则：
+- CSV、Markdown和PNG结果统一保存到：
+  results/13_business_ab_test/
+- 该目录由程序自动创建。
+
+路径检查：
+- 当前文件应位于项目根目录/src/models/；
+- 项目根目录通过Path(__file__).resolve().parents[2]自动定位；
+- 默认输入文件来自：
+  results/12_model_fusion_explainability/stacking_test_predictions.csv。
 """
+
 
 from __future__ import annotations
 
@@ -37,21 +96,26 @@ warnings.filterwarnings("ignore")
 
 RANDOM_SEED = 42
 
-# 项目根目录：默认当前脚本位于项目 src 或 scripts 目录时，自动寻找项目根目录。
-SCRIPT_DIR = Path(__file__).resolve().parent
-if (SCRIPT_DIR / "results").exists():
-    PROJECT_ROOT = SCRIPT_DIR
-elif (SCRIPT_DIR.parent / "results").exists():
-    PROJECT_ROOT = SCRIPT_DIR.parent
-else:
-    PROJECT_ROOT = SCRIPT_DIR
+# 当前文件位于：项目根目录/src/models/
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+# 全部results目录，用于默认输入和兼容搜索
 RESULTS_DIR = PROJECT_ROOT / "results"
-OUTPUT_DIR = RESULTS_DIR / "business_ab_test"
+
+# 本脚本专属results输出目录
+OUTPUT_DIR = RESULTS_DIR / "13_business_ab_test"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# 如自动识别失败，可填写具体文件路径，例如：
-# PREDICTION_FILE = RESULTS_DIR / "model_fusion" / "stacking_predictions.csv"
+# 默认读取12_model_fusion_explainability.py生成的Stacking预测结果
+DEFAULT_PREDICTION_FILE = (
+    RESULTS_DIR
+    / "12_model_fusion_explainability"
+    / "stacking_test_predictions.csv"
+)
+
+# 如自动识别失败，可填写具体文件路径。
+# 设置为None时：优先读取DEFAULT_PREDICTION_FILE；
+# 默认文件不存在时，再递归搜索results目录。
 PREDICTION_FILE: Optional[Path] = None
 
 # 如自动识别失败，可手动填写列名，例如：
@@ -183,6 +247,9 @@ def locate_prediction_file(results_dir: Path) -> Path:
         if not path.exists():
             raise FileNotFoundError(f"指定的预测文件不存在：{path}")
         return path
+
+    if DEFAULT_PREDICTION_FILE.exists():
+        return DEFAULT_PREDICTION_FILE
 
     preferred_keywords = [
         "stacking", "fusion", "ensemble", "prediction",
@@ -914,6 +981,10 @@ def main() -> None:
     np.random.seed(RANDOM_SEED)
     random.seed(RANDOM_SEED)
 
+    print("项目根目录：", PROJECT_ROOT)
+    print("默认预测输入文件：", DEFAULT_PREDICTION_FILE)
+    print("results输出目录：", OUTPUT_DIR)
+
     print("=" * 70)
     print("开始执行第五项：业务落地模拟设计")
     print("=" * 70)
@@ -1047,6 +1118,34 @@ def main() -> None:
 
     print("\n实验效果汇总：")
     print(summary.to_string(index=False))
+
+    expected_outputs = [
+        detail_path,
+        metrics_path,
+        summary_path,
+        segment_path,
+        recommendation_path,
+        report_path,
+        OUTPUT_DIR / "01_ab_conversion_rate.png",
+        OUTPUT_DIR / "02_ab_gross_profit.png"
+    ]
+
+    # 当分层图存在可用数据时，程序会生成第三张图。
+    score_segment_plot = OUTPUT_DIR / "03_score_segment_conversion.png"
+    if not score_segments.empty:
+        expected_outputs.append(score_segment_plot)
+
+    failed_outputs = [
+        str(path)
+        for path in expected_outputs
+        if not path.exists()
+    ]
+
+    if failed_outputs:
+        raise RuntimeError(
+            "以下输出文件保存失败：\n"
+            + "\n".join(failed_outputs)
+        )
 
     print("\n输出目录：")
     print(OUTPUT_DIR)
