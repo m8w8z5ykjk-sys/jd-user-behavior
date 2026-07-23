@@ -1,28 +1,28 @@
 """
 文件名称：02_model_comparison.py
 
-功能说明：
-1. 读取逻辑回归、XGBoost和LightGBM三个模型的评价指标文件。
-2. 提取三个模型在测试集上的Accuracy、Precision、Recall、F1和ROC-AUC。
-3. 将三种模型的测试集表现汇总为统一对比表。
-4. 以ROC-AUC作为核心指标，对模型进行排序。
-5. 绘制三种模型的综合指标对比图。
-6. 分别绘制ROC-AUC和F1-score对比图。
-7. 自动识别测试集ROC-AUC最高的模型。
-8. 保存模型对比表、图表和文字分析报告。
+功能：
+读取三个模型测试结果，生成模型性能对比、图表和分析报告。
 
 输入文件：
-- results/logistic_regression_metrics.csv
-- results/xgboost_metrics.csv
-- results/lightgbm_metrics.csv
+- results/08_logistic_regression/logistic_regression_metrics.csv
+- results/09_xgboost/xgboost_metrics.csv
+- results/10_lightgbm/lightgbm_metrics.csv
+
+processed输出目录：
+- 无
+
+results输出目录：
+- results/02_model_comparison/
 
 输出文件：
-- results/model_comparison.csv
-- results/model_comparison_report.md
-- results/figures/model_metrics_comparison.png
-- results/figures/model_auc_comparison.png
-- results/figures/model_f1_comparison.png
+- model_comparison.csv
+- model_comparison_report.md
+- model_metrics_comparison.png
+- model_auc_comparison.png
+- model_f1_comparison.png
 """
+
 
 from pathlib import Path
 
@@ -43,10 +43,9 @@ import pandas as pd
 # parents[2] = 项目根目录“京东”
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-RESULTS_DIR = BASE_DIR / "results"
-FIGURES_DIR = RESULTS_DIR / "figures"
-
-FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS_ROOT = BASE_DIR / "results"
+RESULTS_DIR = RESULTS_ROOT / "02_model_comparison"
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ==================================================
@@ -54,18 +53,15 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 # ==================================================
 
 LOGISTIC_METRICS_PATH = (
-    RESULTS_DIR /
-    "logistic_regression_metrics.csv"
+    RESULTS_ROOT / "08_logistic_regression" / "logistic_regression_metrics.csv"
 )
 
 XGBOOST_METRICS_PATH = (
-    RESULTS_DIR /
-    "xgboost_metrics.csv"
+    RESULTS_ROOT / "09_xgboost" / "xgboost_metrics.csv"
 )
 
 LIGHTGBM_METRICS_PATH = (
-    RESULTS_DIR /
-    "lightgbm_metrics.csv"
+    RESULTS_ROOT / "10_lightgbm" / "lightgbm_metrics.csv"
 )
 
 
@@ -84,17 +80,17 @@ REPORT_OUTPUT_PATH = (
 )
 
 METRICS_FIGURE_PATH = (
-    FIGURES_DIR /
+    RESULTS_DIR /
     "model_metrics_comparison.png"
 )
 
 AUC_FIGURE_PATH = (
-    FIGURES_DIR /
+    RESULTS_DIR /
     "model_auc_comparison.png"
 )
 
 F1_FIGURE_PATH = (
-    FIGURES_DIR /
+    RESULTS_DIR /
     "model_f1_comparison.png"
 )
 
