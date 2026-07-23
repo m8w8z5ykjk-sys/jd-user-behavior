@@ -1,31 +1,64 @@
 # -*- coding: utf-8 -*-
 """
-第四项：模型融合与可解释性分析
+文件名称：12_model_fusion_explainability.py
 
-任务内容：
-1. 设计Stacking模型融合方案，融合逻辑回归、XGBoost和DIN的预测结果；
-2. 使用逻辑回归作为二层元学习器，提升整体预测性能；
-3. 基于特征系数解释逻辑回归模型；
-4. 基于SHAP值解释XGBoost模型；
-5. 基于SHAP值解释DIN模型；
-6. 识别影响用户购买决策的核心特征；
-7. 分析模型预测错误样本；
-8. 总结模型在冷启动用户和长尾商品场景下的不足；
-9. 自动保存融合结果、解释结果、错误样本和分析报告。
+功能：
+1. 读取逻辑回归、XGBoost和DIN三个基础模型的测试集预测结果；
+2. 对三个模型的预测样本进行对齐和合并；
+3. 使用逻辑回归作为二层元学习器，完成Stacking模型融合；
+4. 对比逻辑回归、XGBoost、DIN和Stacking模型性能；
+5. 根据逻辑回归特征系数解释线性模型；
+6. 使用SHAP方法解释XGBoost模型；
+7. 使用代理解释方法分析DIN模型的重要特征；
+8. 汇总影响用户购买决策的核心特征；
+9. 保存Stacking预测错误样本；
+10. 分析冷启动用户和长尾商品场景下的模型表现；
+11. 生成模型融合与可解释性综合报告；
+12. 将模型等processed输出和CSV、PNG、TXT、JSON、Markdown等results输出
+    分别保存到以当前Python文件名命名的专属目录中。
 
-建议输入文件：
-- 逻辑回归预测结果：results/traditional/logistic_regression_predictions.csv
-- XGBoost预测结果：results/traditional/xgboost_predictions.csv
-- DIN预测结果：results/deep_learning/din_test_predictions.csv
-- 逻辑回归模型：results/traditional/logistic_regression_model.pkl
-- XGBoost模型：results/traditional/xgboost_model.pkl
-- DIN模型：results/deep_learning/din_best.pt
-- 测试特征：data/processed/model_test_dataset.parquet 或 csv
+输入文件名：
+1. results/08_logistic_regression/logistic_regression_test_predictions.csv
+2. results/09_xgboost/xgboost_predictions.csv
+3. results/11_deep_learning_models/din_test_predictions.csv
+4. data/processed/08_logistic_regression/best_logistic_regression_optuna.pkl
+5. data/processed/09_xgboost/best_xgboost_optuna.pkl
+6. data/processed/11_deep_learning_models/din_best.pt
+7. data/processed/07_build_model_dataset/test_dataset.parquet
 
-预测文件至少需要：
-user_id/item_id/label/probability
-如果列名不同，程序会自动识别常见列名。
+processed输出目录：
+- data/processed/12_model_fusion_explainability/
+
+processed输出文件名：
+- stacking_meta_model.pkl
+
+results输出目录：
+- results/12_model_fusion_explainability/
+
+results输出文件名：
+- config.json
+- merged_base_model_predictions.csv
+- stacking_test_predictions.csv
+- model_performance_comparison.csv
+- stacking_base_model_weights.csv
+- logistic_feature_coefficients.csv
+- logistic_feature_coefficients.png
+- xgboost_shap_importance.csv
+- xgboost_shap_summary.png
+- din_proxy_shap_importance.csv
+- din_proxy_shap_summary.png
+- din_shap_explanation_note.txt
+- stacking_error_samples.csv
+- cold_start_long_tail_analysis.csv
+- core_purchase_features.csv
+- model_fusion_explainability_report.md
+
+目录规则：
+- PKL模型文件保存到data/processed/12_model_fusion_explainability/；
+- CSV、PNG、TXT、JSON和Markdown结果保存到results/12_model_fusion_explainability/；
+- 两个目录均由程序自动创建。
 """
+
 
 import os
 import gc
@@ -72,18 +105,34 @@ except ImportError as e:
 # ============================================================
 @dataclass
 class Config:
-    project_root: str = "."
-    output_dir: str = "src/models/results/model_fusion"
+    project_root: str = str(Path(__file__).resolve().parents[2])
 
-    logistic_pred_path: str = "src/models/results/model_comparison/logistic_regression_predictions.csv"
-    xgboost_pred_path: str = "src/models/results/model_comparison/xgboost_predictions.csv"
-    din_pred_path: str = "src/models/results/deep_learning/din_test_predictions.csv"
+    processed_output_dir: str = "data/processed/12_model_fusion_explainability"
+    results_output_dir: str = "results/12_model_fusion_explainability"
 
-    logistic_model_path: str = "src/models/results/model_comparison/logistic_regression_model.pkl"
-    xgboost_model_path: str = "src/models/results/model_comparison/xgboost_model.joblib"
-    din_model_path: str = "src/models/results/deep_learning/din_best.pt"
+    logistic_pred_path: str = (
+        "results/08_logistic_regression/"
+        "logistic_regression_test_predictions.csv"
+    )
+    xgboost_pred_path: str = "results/09_xgboost/xgboost_predictions.csv"
+    din_pred_path: str = (
+        "results/11_deep_learning_models/din_test_predictions.csv"
+    )
 
-    test_feature_path: str = "data/processed/model_test_dataset.parquet"
+    logistic_model_path: str = (
+        "data/processed/08_logistic_regression/"
+        "best_logistic_regression_optuna.pkl"
+    )
+    xgboost_model_path: str = (
+        "data/processed/09_xgboost/best_xgboost_optuna.pkl"
+    )
+    din_model_path: str = (
+        "data/processed/11_deep_learning_models/din_best.pt"
+    )
+
+    test_feature_path: str = (
+        "data/processed/07_build_model_dataset/test_dataset.parquet"
+    )
 
     user_col: str = "user_id"
     item_col: str = "item_id"
@@ -357,17 +406,34 @@ def compare_base_and_stacking(meta_test: pd.DataFrame, cfg: Config) -> pd.DataFr
 # 5. 逻辑回归解释
 # ============================================================
 def load_model(path: Optional[Path]):
+    """
+    安全读取由pickle或joblib保存的模型。
+
+    说明：
+    - sklearn模型虽然扩展名可能是.pkl，但常常由joblib.dump保存；
+    - 因此优先使用joblib.load读取；
+    - 如果joblib读取失败，再回退到pickle.load。
+    """
     if path is None or not path.exists():
         return None
 
     suffix = path.suffix.lower()
-    if suffix in (".pkl", ".pickle"):
-        with open(path, "rb") as f:
-            return pickle.load(f)
 
-    if suffix == ".joblib":
-        import joblib
-        return joblib.load(path)
+    if suffix in (".pkl", ".pickle", ".joblib"):
+        try:
+            import joblib
+            return joblib.load(path)
+        except Exception as joblib_error:
+            try:
+                with open(path, "rb") as f:
+                    return pickle.load(f)
+            except Exception as pickle_error:
+                print(
+                    f"警告：模型文件读取失败：{path}\n"
+                    f"joblib错误：{joblib_error}\n"
+                    f"pickle错误：{pickle_error}"
+                )
+                return None
 
     return None
 
@@ -413,7 +479,7 @@ def explain_logistic_coefficients(
         "direction": np.where(coefficients >= 0, "促进购买", "抑制购买")
     }).sort_values("absolute_coefficient", ascending=False)
 
-    output_dir = Path(cfg.output_dir)
+    output_dir = Path(cfg.results_output_dir)
     coef_df.to_csv(
         output_dir / "logistic_feature_coefficients.csv",
         index=False,
@@ -443,7 +509,7 @@ def explain_stacking_coefficients(model: Pipeline, cfg: Config) -> pd.DataFrame:
     }).sort_values("absolute_coefficient", ascending=False)
 
     coef_df.to_csv(
-        Path(cfg.output_dir) / "stacking_base_model_weights.csv",
+        Path(cfg.results_output_dir) / "stacking_base_model_weights.csv",
         index=False,
         encoding="utf-8-sig"
     )
@@ -528,7 +594,7 @@ def explain_xgboost_shap(
         "mean_abs_shap": importance
     }).sort_values("mean_abs_shap", ascending=False)
 
-    output_dir = Path(cfg.output_dir)
+    output_dir = Path(cfg.results_output_dir)
     shap_df.to_csv(
         output_dir / "xgboost_shap_importance.csv",
         index=False,
@@ -624,7 +690,7 @@ def explain_din_with_prediction_shap(
         "mean_abs_shap": importance
     }).sort_values("mean_abs_shap", ascending=False)
 
-    output_dir = Path(cfg.output_dir)
+    output_dir = Path(cfg.results_output_dir)
     shap_df.to_csv(
         output_dir / "din_proxy_shap_importance.csv",
         index=False,
@@ -774,7 +840,7 @@ def analyze_errors(
         ]
     ]
 
-    output_dir = Path(cfg.output_dir)
+    output_dir = Path(cfg.results_output_dir)
     error_samples.to_csv(
         output_dir / "stacking_error_samples.csv",
         index=False,
@@ -846,7 +912,7 @@ def combine_core_features(
     )
 
     summary.to_csv(
-        Path(cfg.output_dir) / "core_purchase_features.csv",
+        Path(cfg.results_output_dir) / "core_purchase_features.csv",
         index=False,
         encoding="utf-8-sig"
     )
@@ -864,7 +930,7 @@ def generate_report(
     scenario_df: pd.DataFrame,
     cfg: Config
 ) -> None:
-    output_path = Path(cfg.output_dir) / "model_fusion_explainability_report.md"
+    output_path = Path(cfg.results_output_dir) / "model_fusion_explainability_report.md"
 
     best_row = comparison_df.iloc[0]
     stacking_row = comparison_df[
@@ -964,10 +1030,26 @@ def generate_report(
 # ============================================================
 def main(cfg: Config) -> None:
     set_seed(cfg.random_state)
-    cfg.output_dir = str(resolve_path(cfg, cfg.output_dir))
-    ensure_dir(cfg.output_dir)
 
-    with open(Path(cfg.output_dir) / "config.json", "w", encoding="utf-8") as f:
+    cfg.processed_output_dir = str(
+        resolve_path(cfg, cfg.processed_output_dir)
+    )
+    cfg.results_output_dir = str(
+        resolve_path(cfg, cfg.results_output_dir)
+    )
+
+    ensure_dir(cfg.processed_output_dir)
+    ensure_dir(cfg.results_output_dir)
+
+    print("项目根目录：", Path(cfg.project_root).resolve())
+    print("processed输出目录：", Path(cfg.processed_output_dir).resolve())
+    print("results输出目录：", Path(cfg.results_output_dir).resolve())
+
+    with open(
+        Path(cfg.results_output_dir) / "config.json",
+        "w",
+        encoding="utf-8"
+    ) as f:
         json.dump(asdict(cfg), f, ensure_ascii=False, indent=2)
 
     print("=" * 70)
@@ -1012,7 +1094,7 @@ def main(cfg: Config) -> None:
     print("\n[2/9] 合并预测结果")
     merged = merge_predictions(logistic_pred, xgb_pred, din_pred)
     merged.to_csv(
-        Path(cfg.output_dir) / "merged_base_model_predictions.csv",
+        Path(cfg.results_output_dir) / "merged_base_model_predictions.csv",
         index=False,
         encoding="utf-8-sig"
     )
@@ -1021,11 +1103,14 @@ def main(cfg: Config) -> None:
     print("\n[3/9] 训练Stacking元学习器")
     stacking_model, meta_train, meta_test = train_stacking_model(merged, cfg)
 
-    with open(Path(cfg.output_dir) / "stacking_meta_model.pkl", "wb") as f:
+    stacking_model_path = (
+        Path(cfg.processed_output_dir) / "stacking_meta_model.pkl"
+    )
+    with open(stacking_model_path, "wb") as f:
         pickle.dump(stacking_model, f)
 
     meta_test.to_csv(
-        Path(cfg.output_dir) / "stacking_test_predictions.csv",
+        Path(cfg.results_output_dir) / "stacking_test_predictions.csv",
         index=False,
         encoding="utf-8-sig"
     )
@@ -1033,7 +1118,7 @@ def main(cfg: Config) -> None:
     print("\n[4/9] 对比基础模型与融合模型")
     comparison_df = compare_base_and_stacking(meta_test, cfg)
     comparison_df.to_csv(
-        Path(cfg.output_dir) / "model_performance_comparison.csv",
+        Path(cfg.results_output_dir) / "model_performance_comparison.csv",
         index=False,
         encoding="utf-8-sig"
     )
@@ -1082,8 +1167,33 @@ def main(cfg: Config) -> None:
         cfg
     )
 
-    print("\n全部任务完成。结果保存在：")
-    print(Path(cfg.output_dir).resolve())
+    required_outputs = [
+        Path(cfg.processed_output_dir) / "stacking_meta_model.pkl",
+        Path(cfg.results_output_dir) / "config.json",
+        Path(cfg.results_output_dir) / "merged_base_model_predictions.csv",
+        Path(cfg.results_output_dir) / "stacking_test_predictions.csv",
+        Path(cfg.results_output_dir) / "model_performance_comparison.csv",
+        Path(cfg.results_output_dir) / "stacking_base_model_weights.csv",
+        Path(cfg.results_output_dir) / "stacking_error_samples.csv",
+        Path(cfg.results_output_dir) / "cold_start_long_tail_analysis.csv",
+        Path(cfg.results_output_dir) / "core_purchase_features.csv",
+        Path(cfg.results_output_dir) / "model_fusion_explainability_report.md"
+    ]
+
+    failed_outputs = [
+        str(path)
+        for path in required_outputs
+        if not path.exists()
+    ]
+    if failed_outputs:
+        raise RuntimeError(
+            "以下必要输出文件保存失败：\n"
+            + "\n".join(failed_outputs)
+        )
+
+    print("\n全部任务完成。")
+    print("processed输出保存在：", Path(cfg.processed_output_dir).resolve())
+    print("results输出保存在：", Path(cfg.results_output_dir).resolve())
     print("\n主要输出文件：")
     print("1. model_performance_comparison.csv")
     print("2. stacking_test_predictions.csv")
@@ -1101,11 +1211,20 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="第四项：Stacking模型融合与可解释性分析"
     )
-    parser.add_argument("--project_root", type=str, default=".")
     parser.add_argument(
-        "--output_dir",
+        "--project_root",
         type=str,
-        default="src/models/results/model_fusion"
+        default=str(Path(__file__).resolve().parents[2])
+    )
+    parser.add_argument(
+        "--processed_output_dir",
+        type=str,
+        default=Config.processed_output_dir
+    )
+    parser.add_argument(
+        "--results_output_dir",
+        type=str,
+        default=Config.results_output_dir
     )
     parser.add_argument(
         "--logistic_pred_path",
@@ -1154,7 +1273,7 @@ if __name__ == "__main__":
     args = parse_args()
     config = Config(
         project_root=args.project_root,
-        output_dir=args.output_dir,
+        results_output_dir=args.results_output_dir,
         logistic_pred_path=args.logistic_pred_path,
         xgboost_pred_path=args.xgboost_pred_path,
         din_pred_path=args.din_pred_path,
