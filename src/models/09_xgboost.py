@@ -625,6 +625,29 @@ prediction_df.to_csv(
     encoding="utf-8-sig"
 )
 
+# 同时保存第四项Stacking可直接读取的统一格式预测文件
+FUSION_RESULT_DIR = BASE_DIR / "src" / "models" / "results" / "model_comparison"
+FUSION_RESULT_DIR.mkdir(parents=True, exist_ok=True)
+
+fusion_prediction_df = pd.DataFrame({
+    "label": y_test.reset_index(drop=True).to_numpy(),
+    "probability": np.asarray(test_prob).reshape(-1)
+})
+
+# 如果测试集中保留了用户和商品ID，则一并保存，方便三个模型准确对齐
+for id_col in ["user_id", "item_id", "user_id_idx", "item_id_idx"]:
+    if id_col in test_df.columns:
+        fusion_prediction_df[id_col] = test_df[id_col].reset_index(drop=True).to_numpy()
+
+fusion_prediction_path = FUSION_RESULT_DIR / "xgboost_predictions.csv"
+fusion_prediction_df.to_csv(
+    fusion_prediction_path,
+    index=False,
+    encoding="utf-8-sig"
+)
+
+print("XGBoost融合预测文件已保存：", fusion_prediction_path)
+
 
 # ==================================================
 # 26. 保存混淆矩阵
@@ -671,6 +694,13 @@ joblib.dump(
     best_model,
     model_path
 )
+
+fusion_model_path = FUSION_RESULT_DIR / "xgboost_model.joblib"
+joblib.dump(
+    best_model,
+    fusion_model_path
+)
+print("XGBoost融合模型文件已保存：", fusion_model_path)
 
 
 # ==================================================
