@@ -1,27 +1,63 @@
 """
 文件名称：08_logistic_regression.py
 
-功能说明：
-1. 读取训练集、验证集和测试集。
-2. 构建逻辑回归基础分类模型。
-3. 使用Optuna自动搜索逻辑回归最佳参数。
-4. 以验证集ROC-AUC作为核心优化指标。
-5. 计算Accuracy、Precision、Recall、F1和ROC-AUC。
-6. 保存模型评价指标、最佳参数、调参记录、预测结果和最优模型。
+功能：
+1. 读取07_build_model_dataset.py生成的训练集、验证集和测试集；
+2. 构建逻辑回归基础分类模型；
+3. 使用Optuna自动搜索逻辑回归最佳参数；
+4. 以验证集ROC-AUC作为核心优化指标；
+5. 计算Accuracy、Precision、Recall、F1和ROC-AUC；
+6. 保存模型评价指标、最佳参数、调参记录、预测结果和混淆矩阵；
+7. 保存最优逻辑回归模型及训练集缺失值填充中位数；
+8. 将processed输出和results输出分别保存到以当前Python文件名命名的目录。
 
-输入文件：
-- data/processed/train_dataset.parquet
-- data/processed/valid_dataset.parquet
-- data/processed/test_dataset.parquet
+输入文件名：
+1. data/processed/07_build_model_dataset/train_dataset.parquet
+   模型训练集。
 
-输出文件：
-- results/logistic_regression_metrics.csv
-- results/logistic_regression_optuna_best_params.csv
-- results/logistic_regression_optuna_trials.csv
-- results/logistic_regression_test_predictions.csv
-- results/logistic_regression_confusion_matrix.csv
-- results/models/best_logistic_regression_optuna.pkl
+2. data/processed/07_build_model_dataset/valid_dataset.parquet
+   模型验证集。
+
+3. data/processed/07_build_model_dataset/test_dataset.parquet
+   模型测试集。
+
+processed输出目录：
+- data/processed/08_logistic_regression/
+
+processed输出文件名：
+1. data/processed/08_logistic_regression/best_logistic_regression_optuna.pkl
+   Optuna调参后得到的最优逻辑回归模型。
+
+2. data/processed/08_logistic_regression/logistic_regression_feature_medians.pkl
+   训练集数值特征中位数，用于后续预测时处理缺失值。
+
+results输出目录：
+- results/08_logistic_regression/
+
+results输出文件名：
+1. results/08_logistic_regression/logistic_regression_metrics.csv
+2. results/08_logistic_regression/logistic_regression_optuna_best_params.csv
+3. results/08_logistic_regression/logistic_regression_optuna_trials.csv
+4. results/08_logistic_regression/logistic_regression_test_predictions.csv
+5. results/08_logistic_regression/logistic_regression_confusion_matrix.csv
+
+目录规则：
+- PKL等模型和中间对象保存到：
+  data/processed/08_logistic_regression/
+- CSV等评估结果保存到：
+  results/08_logistic_regression/
+- 两个目录均由程序自动创建。
+
+路径检查：
+- 当前文件应位于：项目根目录/src/models/；
+- 项目根目录通过Path(__file__).resolve().parents[2]自动定位；
+- 输入文件读取自：
+  data/processed/07_build_model_dataset/；
+- 输出文件分别保存到：
+  data/processed/08_logistic_regression/
+  results/08_logistic_regression/。
 """
+
 
 from pathlib import Path
 
@@ -47,29 +83,50 @@ from sklearn.metrics import (
 # ==================================================
 
 # 当前文件位置：
-# 京东/src/models/08_logistic_regression.py
-#
-# parents[0] = models
-# parents[1] = src
-# parents[2] = 京东项目根目录
+# 项目根目录/src/models/08_logistic_regression.py
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-PROCESSED_DIR = BASE_DIR / "data" / "processed"
-RESULTS_DIR = BASE_DIR / "results"
-MODEL_DIR = RESULTS_DIR / "models"
+# 07脚本生成的模型数据集目录
+PROCESSED_INPUT_DIR = (
+    BASE_DIR
+    / "data"
+    / "processed"
+    / "07_build_model_dataset"
+)
 
-# 如果结果目录不存在，则自动创建
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-MODEL_DIR.mkdir(parents=True, exist_ok=True)
+# 当前脚本专属processed输出目录
+PROCESSED_OUTPUT_DIR = (
+    BASE_DIR
+    / "data"
+    / "processed"
+    / "08_logistic_regression"
+)
+
+# 当前脚本专属results输出目录
+RESULTS_OUTPUT_DIR = (
+    BASE_DIR
+    / "results"
+    / "08_logistic_regression"
+)
+
+PROCESSED_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ==================================================
-# 2. 设置数据文件路径
+# 2. 设置输入数据文件路径
 # ==================================================
 
-TRAIN_PATH = PROCESSED_DIR / "train_dataset.parquet"
-VALID_PATH = PROCESSED_DIR / "valid_dataset.parquet"
-TEST_PATH = PROCESSED_DIR / "test_dataset.parquet"
+TRAIN_PATH = PROCESSED_INPUT_DIR / "train_dataset.parquet"
+VALID_PATH = PROCESSED_INPUT_DIR / "valid_dataset.parquet"
+TEST_PATH = PROCESSED_INPUT_DIR / "test_dataset.parquet"
+
+print("项目根目录：", BASE_DIR)
+print("训练集：", TRAIN_PATH)
+print("验证集：", VALID_PATH)
+print("测试集：", TEST_PATH)
+print("processed输出目录：", PROCESSED_OUTPUT_DIR)
+print("results输出目录：", RESULTS_OUTPUT_DIR)
 
 
 # ==================================================
@@ -495,7 +552,7 @@ metrics_df = pd.DataFrame(
 )
 
 metrics_path = (
-    RESULTS_DIR /
+    RESULTS_OUTPUT_DIR /
     "logistic_regression_metrics.csv"
 )
 
@@ -522,7 +579,7 @@ best_params_df = pd.DataFrame(
 )
 
 best_params_path = (
-    RESULTS_DIR /
+    RESULTS_OUTPUT_DIR /
     "logistic_regression_optuna_best_params.csv"
 )
 
@@ -540,7 +597,7 @@ best_params_df.to_csv(
 optuna_trials_df = study.trials_dataframe()
 
 trials_path = (
-    RESULTS_DIR /
+    RESULTS_OUTPUT_DIR /
     "logistic_regression_optuna_trials.csv"
 )
 
@@ -562,7 +619,7 @@ prediction_df = pd.DataFrame({
 })
 
 prediction_path = (
-    RESULTS_DIR /
+    RESULTS_OUTPUT_DIR /
     "logistic_regression_test_predictions.csv"
 )
 
@@ -595,7 +652,7 @@ confusion_matrix_df = pd.DataFrame(
 )
 
 confusion_matrix_path = (
-    RESULTS_DIR /
+    RESULTS_OUTPUT_DIR /
     "logistic_regression_confusion_matrix.csv"
 )
 
@@ -610,7 +667,7 @@ confusion_matrix_df.to_csv(
 # ==================================================
 
 model_path = (
-    MODEL_DIR /
+    PROCESSED_OUTPUT_DIR /
     "best_logistic_regression_optuna.pkl"
 )
 
@@ -625,7 +682,7 @@ joblib.dump(
 # ==================================================
 
 median_path = (
-    MODEL_DIR /
+    PROCESSED_OUTPUT_DIR /
     "logistic_regression_feature_medians.pkl"
 )
 
@@ -636,7 +693,34 @@ joblib.dump(
 
 
 # ==================================================
-# 29. 输出最终结果
+# 29. 检查输出文件
+# ==================================================
+
+expected_outputs = [
+    metrics_path,
+    best_params_path,
+    trials_path,
+    prediction_path,
+    confusion_matrix_path,
+    model_path,
+    median_path
+]
+
+failed_outputs = [
+    str(path)
+    for path in expected_outputs
+    if not path.exists()
+]
+
+if failed_outputs:
+    raise RuntimeError(
+        "以下输出文件保存失败：\n"
+        + "\n".join(failed_outputs)
+    )
+
+
+# ==================================================
+# 30. 输出最终结果
 # ==================================================
 
 print("\n" + "=" * 60)
