@@ -1,36 +1,104 @@
-# 京东用户行为数据分析与购买预测项目
+# 京东用户行为预测项目（JD User Behavior Prediction）
 
 ## 项目简介
+本项目基于京东用户行为数据，完成从数据清洗、特征工程、传统机器学习、深度学习、模型融合到业务A/B测试的完整机器学习流程。
 
-本项目基于京东用户行为数据，完成数据清洗、特征工程、用户行为分析、建模样本构建以及购买预测模型准备工作。
+## 项目目标
+预测用户未来7天是否购买商品，并基于预测结果制定精准营销策略。
 
-项目目标是根据用户历史行为特征，预测用户未来7天是否产生购买行为。
-
-## 项目主要内容
-
-1. 原始数据读取与清洗；
-2. 数据质量检测；
-3. 用户、商品和时间特征构建；
-4. 用户行为与购买转化分析；
-5. 建模正负样本构建；
-6. 训练集、验证集和测试集划分；
-7. 类别不平衡处理；
-8. 特征筛选与特征重要性分析；
-9. 后续机器学习模型训练与评估。
-
-## 项目目录
+## 项目结构
 
 ```text
-jd-user-behavior/
-├── data/
-│   ├── raw/                 原始数据
-│   └── processed/           清洗后数据和特征数据
-├── docs/                    项目文档
-├── results/                 分析结果、图表和报告
-├── src/
-│   ├── data/                数据处理代码
-│   ├── features/            特征工程和样本构建代码
-│   └── analysis/            数据分析代码
-├── .gitignore
-├── README.md
-└── requirements.txt
+data/
+ ├── raw/
+ └── processed/
+
+results/
+
+src/
+ ├── analysis/
+ │   ├── 01_exploratory_analysis.py
+ │   └── 02_model_comparison.py
+ ├── features/
+ │   ├── 01_time_features.py
+ │   ├── 01_user_lifecycle_features.py
+ │   ├── 02_item_lifecycle_features.py
+ │   ├── 03_behavior_sequence_features.py
+ │   ├── 04_implicit_features.py
+ │   ├── 05_business_features.py
+ │   ├── 06_feature_preprocessing.py
+ │   └── 07_build_model_dataset.py
+ └── models/
+     ├── 08_logistic_regression.py
+     ├── 09_xgboost.py
+     ├── 10_lightgbm.py
+     ├── 11_deep_learning_models.py
+     ├── 12_model_fusion_explainability.py
+     └── 13_business_ab_test.py
+```
+
+## 项目流程
+1. 数据加载与清洗
+2. 特征工程
+3. 特征预处理
+4. 构建训练/验证/测试集
+5. Logistic Regression
+6. XGBoost
+7. LightGBM
+8. LSTM / GRU / DIN
+9. Stacking模型融合
+10. SHAP可解释性分析
+11. A/B测试模拟
+
+## 输入数据
+- data/raw/user_behavior.csv
+
+## 中间数据
+- data/processed/
+
+## 输出结果
+- results/
+
+## 主要技术
+- Pandas
+- NumPy
+- PyArrow
+- Scikit-learn
+- XGBoost
+- LightGBM
+- PyTorch
+- Optuna
+- SHAP
+- Matplotlib
+- SQLite
+
+## 运行顺序
+
+```text
+load_data.py
+parallel_read.py
+clean_data.py
+build_feature_table.py
+
+01_time_features.py
+01_user_lifecycle_features.py
+02_item_lifecycle_features.py
+03_behavior_sequence_features.py
+04_implicit_features.py
+05_business_features.py
+06_feature_preprocessing.py
+07_build_model_dataset.py
+
+08_logistic_regression.py
+09_xgboost.py
+10_lightgbm.py
+11_deep_learning_models.py
+12_model_fusion_explainability.py
+13_business_ab_test.py
+
+01_exploratory_analysis.py
+02_model_comparison.py
+```
+
+## 作者
+Chen Yixuan
