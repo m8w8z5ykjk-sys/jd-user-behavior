@@ -1,21 +1,87 @@
 # -*- coding: utf-8 -*-
 """
-第三项：深度学习模型构建与优化
-功能：
-1. 从用户行为明细构建“用户-商品未来7天是否购买”的监督学习样本；
-2. 构建用户历史行为序列，并完成类别特征Embedding；
-3. 实现LSTM、GRU、DIN三种模型；
-4. 支持Embedding维度、隐藏层单元数、Dropout、多头注意力等参数配置；
-5. 使用学习率衰减、Early Stopping防止过拟合；
-6. 输出AUC、准确率、召回率、F1，并保存模型、预测结果和对比报告；
-7. 可选使用Optuna自动调参；
-8. 可选读取传统模型预测结果，与深度学习模型进行性能对比。
+文件名称：11_deep_learning_models.py
 
-默认输入字段：
-user_id,item_id,item_category,behavior_type,time
-其中behavior_type=4表示购买。
-如你的字段名不同，请在CONFIG中修改。
+功能：
+1. 读取build_feature_table.py生成的清洗后用户行为明细数据；
+2. 从用户行为中构建“用户—商品未来若干天是否购买”的监督学习样本；
+3. 构建用户历史行为序列并完成用户、商品、类别和行为Embedding编码；
+4. 分别训练LSTM、GRU和DIN三种深度学习模型；
+5. 支持调整Embedding维度、隐藏层单元数、Dropout比例和多头注意力参数；
+6. 使用类别权重、学习率衰减和Early Stopping缓解类别不平衡与过拟合；
+7. 可选使用Optuna进行自动超参数调优；
+8. 输出AUC、Accuracy、Precision、Recall和F1；
+9. 可选读取传统机器学习模型结果，完成传统模型与深度学习模型对比；
+10. 将模型及样本等processed输出和CSV、JSON等results输出分别保存到
+    以当前Python文件名命名的专属目录中。
+
+输入文件名：
+1. data/processed/build_feature_table/user_behavior_cleaned.parquet
+   清洗后的用户行为明细数据。
+   必需字段：
+   user_id、item_id、item_category、behavior_type、time。
+
+可选输入文件名：
+2. 由traditional_result_path参数指定的传统模型对比结果CSV文件。
+   用于与逻辑回归、XGBoost和LightGBM等传统模型进行性能对比。
+
+processed输出目录：
+- data/processed/11_deep_learning_models/
+
+processed输出文件名：
+1. deep_learning_samples.pkl
+   构建完成的训练、验证和测试监督学习样本。
+
+2. lstm_best.pt
+   LSTM验证集AUC最优时的模型参数。
+
+3. gru_best.pt
+   GRU验证集AUC最优时的模型参数。
+
+4. din_best.pt
+   DIN验证集AUC最优时的模型参数。
+
+5. lstm_trial_数字_best.pt、gru_trial_数字_best.pt、din_trial_数字_best.pt
+   启用Optuna时各次试验临时保存的最佳模型参数。
+
+results输出目录：
+- results/11_deep_learning_models/
+
+results输出文件名：
+1. config.json
+   本次运行配置。
+
+2. lstm_training_history.csv
+3. gru_training_history.csv
+4. din_training_history.csv
+   各模型每轮训练和验证指标。
+
+5. lstm_test_predictions.csv
+6. gru_test_predictions.csv
+7. din_test_predictions.csv
+   各模型测试集真实标签、预测类别和预测概率。
+
+8. deep_learning_model_comparison.csv
+   LSTM、GRU、DIN及可选传统模型的性能对比。
+
+9. lstm_trial_数字_training_history.csv、
+   gru_trial_数字_training_history.csv、
+   din_trial_数字_training_history.csv
+   启用Optuna时各次试验的训练历史。
+
+目录规则：
+- PT、PKL等模型和中间样本保存到：
+  data/processed/11_deep_learning_models/
+- CSV、JSON等分析结果保存到：
+  results/11_deep_learning_models/
+- 两个目录均由程序自动创建。
+
+路径检查：
+- 当前文件应位于项目根目录/src/models/；
+- 项目根目录通过Path(__file__).resolve().parents[2]自动定位；
+- 可使用--data_path、--processed_output_dir和--results_output_dir修改默认路径。
 """
+
 
 import os
 import gc
@@ -49,12 +115,37 @@ except ImportError as e:
 
 
 # ============================================================
+# 项目路径
+# ============================================================
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_DATA_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "build_feature_table"
+    / "user_behavior_cleaned.parquet"
+)
+DEFAULT_PROCESSED_OUTPUT_DIR = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "11_deep_learning_models"
+)
+DEFAULT_RESULTS_OUTPUT_DIR = (
+    PROJECT_ROOT
+    / "results"
+    / "11_deep_learning_models"
+)
+
+
+# ============================================================
 # 1. 全局配置
 # ============================================================
 @dataclass
 class Config:
-    data_path:str="../../data/processed/user_behavior_cleaned.parquet"
-    output_dir:str="results/deep_learning"
+    data_path:str=str(DEFAULT_DATA_PATH)
+    processed_output_dir:str=str(DEFAULT_PROCESSED_OUTPUT_DIR)
+    results_output_dir:str=str(DEFAULT_RESULTS_OUTPUT_DIR)
     traditional_result_path:str=""
 
     user_col:str="user_id"
@@ -565,7 +656,7 @@ def train_model(
     best_epoch=0
     wait=0
     history=[]
-    best_path=Path(cfg.output_dir)/f"{model_name}_best.pt"
+    best_path=Path(cfg.processed_output_dir)/f"{model_name}_best.pt"
 
     print(f"\n开始训练{model_name.upper()}，设备：{device}")
     for epoch in range(1,cfg.epochs+1):
@@ -622,7 +713,7 @@ def train_model(
         model.load_state_dict(torch.load(best_path,map_location=device))
 
     pd.DataFrame(history).to_csv(
-        Path(cfg.output_dir)/f"{model_name}_training_history.csv",
+        Path(cfg.results_output_dir)/f"{model_name}_training_history.csv",
         index=False,encoding="utf-8-sig"
     )
     print(f"{model_name.upper()}最佳轮次：{best_epoch}，最佳验证AUC：{best_auc:.4f}")
@@ -717,7 +808,7 @@ def save_predictions(
     out["probability"]=probs
     out["prediction"]=(probs>=0.5).astype(int)
     out.to_csv(
-        Path(cfg.output_dir)/f"{model_name}_test_predictions.csv",
+        Path(cfg.results_output_dir)/f"{model_name}_test_predictions.csv",
         index=False,encoding="utf-8-sig"
     )
 
@@ -746,9 +837,26 @@ def compare_with_traditional(result_df:pd.DataFrame,cfg:Config)->pd.DataFrame:
 # ============================================================
 def main(cfg:Config):
     set_seed(cfg.seed)
-    ensure_dir(cfg.output_dir)
 
-    with open(Path(cfg.output_dir)/"config.json","w",encoding="utf-8") as f:
+    data_path=Path(cfg.data_path)
+    processed_dir=Path(cfg.processed_output_dir)
+    results_dir=Path(cfg.results_output_dir)
+
+    if not data_path.exists():
+        raise FileNotFoundError(
+            f"找不到输入文件：{data_path}\n"
+            "请先运行src/build_feature_table.py，或使用--data_path指定正确文件。"
+        )
+
+    ensure_dir(str(processed_dir))
+    ensure_dir(str(results_dir))
+
+    print("项目根目录：", PROJECT_ROOT)
+    print("输入文件：", data_path)
+    print("processed输出目录：", processed_dir)
+    print("results输出目录：", results_dir)
+
+    with open(results_dir/"config.json","w",encoding="utf-8") as f:
         json.dump(asdict(cfg),f,ensure_ascii=False,indent=2)
 
     df=load_data(cfg)
@@ -762,7 +870,7 @@ def main(cfg:Config):
     }
 
     samples=build_datasets(df,cfg)
-    samples.to_pickle(Path(cfg.output_dir)/"deep_learning_samples.pkl")
+    samples.to_pickle(Path(cfg.processed_output_dir)/"deep_learning_samples.pkl")
 
     train_df=samples[samples["split"]=="train"].reset_index(drop=True)
     val_df=samples[samples["split"]=="val"].reset_index(drop=True)
@@ -851,20 +959,64 @@ def main(cfg:Config):
         ["model","auc","accuracy","precision","recall","f1","loss"]
     ]
     result_df=compare_with_traditional(result_df,cfg)
-    result_df.to_csv(
-        Path(cfg.output_dir)/"deep_learning_model_comparison.csv",
-        index=False,encoding="utf-8-sig"
+    comparison_path=(
+        Path(cfg.results_output_dir)
+        / "deep_learning_model_comparison.csv"
     )
+    result_df.to_csv(
+        comparison_path,
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+    expected_outputs=[
+        Path(cfg.results_output_dir)/"config.json",
+        Path(cfg.processed_output_dir)/"deep_learning_samples.pkl",
+        comparison_path
+    ]
+
+    selected_models=(
+        ["lstm","gru","din"]
+        if cfg.model_name=="all"
+        else [cfg.model_name]
+    )
+    for selected_model in selected_models:
+        expected_outputs.extend([
+            Path(cfg.processed_output_dir)/f"{selected_model}_best.pt",
+            Path(cfg.results_output_dir)/f"{selected_model}_training_history.csv",
+            Path(cfg.results_output_dir)/f"{selected_model}_test_predictions.csv"
+        ])
+
+    failed_outputs=[
+        str(path)
+        for path in expected_outputs
+        if not path.exists()
+    ]
+    if failed_outputs:
+        raise RuntimeError(
+            "以下输出文件保存失败：\n"
+            + "\n".join(failed_outputs)
+        )
 
     print("\n模型性能对比：")
     print(result_df.to_string(index=False))
-    print(f"\n全部结果已保存到：{Path(cfg.output_dir).resolve()}")
+    print(f"\nprocessed输出已保存到：{Path(cfg.processed_output_dir).resolve()}")
+    print(f"results输出已保存到：{Path(cfg.results_output_dir).resolve()}")
 
 
 def parse_args():
     parser=argparse.ArgumentParser(description="第三项：LSTM/GRU/DIN深度学习模型")
     parser.add_argument("--data_path",type=str,default=Config.data_path)
-    parser.add_argument("--output_dir",type=str,default=Config.output_dir)
+    parser.add_argument(
+        "--processed_output_dir",
+        type=str,
+        default=str(DEFAULT_PROCESSED_OUTPUT_DIR)
+    )
+    parser.add_argument(
+        "--results_output_dir",
+        type=str,
+        default=str(DEFAULT_RESULTS_OUTPUT_DIR)
+    )
     parser.add_argument("--model_name",type=str,default=Config.model_name,
                         choices=["lstm","gru","din","all"])
     parser.add_argument("--epochs",type=int,default=Config.epochs)
@@ -880,7 +1032,8 @@ if __name__=="__main__":
     args=parse_args()
     config=Config(
         data_path=args.data_path,
-        output_dir=args.output_dir,
+        processed_output_dir=args.processed_output_dir,
+        results_output_dir=args.results_output_dir,
         model_name=args.model_name,
         epochs=args.epochs,
         batch_size=args.batch_size,
