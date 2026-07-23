@@ -1,3 +1,31 @@
+"""
+文件名称：clean_data.py
+
+任务内容：
+1. 读取原始用户行为数据，检查数据规模、字段名称和缺失值；
+2. 根据业务规则检查非法 user_id、item_id 和 item_category；
+3. 按 user_id、item_id、behavior_type、time 四元组检查并删除重复记录；
+4. 将 time 字段统一转换为日期时间格式，检查无效时间和时间范围；
+5. 检查 behavior_type 是否属于合法取值 1、2、3、4；
+6. 自动完成数据完整性、一致性、唯一性和时间有效性检测；
+7. 生成数据质量报告；
+8. 保存清洗后的用户行为数据。
+
+输入文件：
+- /Users/chenyixuan/Desktop/京东/data/raw/user_behavior_processed.csv
+  原始用户行为数据。
+
+输出文件：
+- ../data/processed/user_behavior_cleaned.csv
+  完成四元组去重、时间格式统一和基础质量检查后的清洗数据。
+
+- ../results/quality_report.txt
+  数据质量报告，包含缺失值、非法行为、重复记录和时间有效性等结果。
+
+控制台输出：
+- 数据前5行、数据形状、字段名称和缺失值；
+- 非法字段数量、重复数量、时间范围及质量检测结果。
+"""
 import pandas as pd
 df = pd.read_csv("/Users/chenyixuan/Desktop/京东/data/raw/user_behavior_processed.csv")
 print(df.head())
