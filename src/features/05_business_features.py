@@ -1,8 +1,63 @@
+"""
+文件名称：05_business_features.py
+
+功能：
+1. 读取 build_feature_table.py 生成的用户行为数据；
+2. 构建业务导向特征（RFM、用户价值、转化漏斗、偏好强度等）；
+3. 输出业务特征数据集；
+4. 所有输出按当前 Python 文件名分类保存。
+
+输入文件：
+- data/processed/build_feature_table/user_behavior_cleaned.parquet
+
+processed输出目录：
+- data/processed/05_business_features/
+
+results输出目录：
+- results/05_business_features/
+
+目录规则：
+- 所有 Parquet、PKL 等中间数据保存到：
+  data/processed/05_business_features/
+- 所有 CSV、TXT、PNG、PDF、Excel 等分析结果保存到：
+  results/05_business_features/
+"""
+
 import pandas as pd
 from pathlib import Path
+
+# ===============================
+# 项目路径配置
+# ===============================
 BASE_DIR = Path(__file__).resolve().parents[2]
-INPUT_FILE = BASE_DIR / "data" / "processed" / "user_behavior_cleaned.parquet"
-OUTPUT_DIR = BASE_DIR / "data" / "processed"
+
+INPUT_FILE = (
+    BASE_DIR
+    / "data"
+    / "processed"
+    / "build_feature_table"
+    / "user_behavior_cleaned.parquet"
+)
+
+PROCESSED_OUTPUT_DIR = (
+    BASE_DIR
+    / "data"
+    / "processed"
+    / "05_business_features"
+)
+
+RESULTS_OUTPUT_DIR = (
+    BASE_DIR
+    / "results"
+    / "05_business_features"
+)
+
+PROCESSED_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+INPUT_FILE = INPUT_FILE
+OUTPUT_DIR = PROCESSED_OUTPUT_DIR
 df = pd.read_parquet(INPUT_FILE)
 df["datetime"] = pd.to_datetime(df["time"])
 print("数据读取成功")
