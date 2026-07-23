@@ -80,7 +80,7 @@ class Config:
     din_pred_path: str = "src/models/results/deep_learning/din_test_predictions.csv"
 
     logistic_model_path: str = "src/models/results/model_comparison/logistic_regression_model.pkl"
-    xgboost_model_path: str = "src/models/results/model_comparison/xgboost_model.pkl"
+    xgboost_model_path: str = "src/models/results/model_comparison/xgboost_model.joblib"
     din_model_path: str = "src/models/results/deep_learning/din_best.pt"
 
     test_feature_path: str = "data/processed/model_test_dataset.parquet"
@@ -206,13 +206,13 @@ def standardize_prediction_file(
     )
     label_col = detect_column(
         df,
-        [cfg.label_col, "target", "y_true", "actual", "is_buy", "purchase_label"]
+        [cfg.label_col, "target", "y_true", "true_label", "actual", "is_buy", "purchase_label"]
     )
     prob_col = detect_column(
         df,
         [
             "probability", "prob", "y_prob", "pred_proba",
-            "prediction_probability", "positive_probability",
+            "prediction_probability", "positive_probability", "purchase_probability",
             f"{model_name.lower()}_probability"
         ]
     )
@@ -1054,7 +1054,7 @@ def main(cfg: Config) -> None:
 
     print("\n[6/9] XGBoost SHAP解释")
     xgb_model_path = find_existing_file(
-        cfg, cfg.xgboost_model_path, ["xgboost", "model"]
+        cfg, cfg.xgboost_model_path, ["xgboost"]
     )
     xgb_model = load_model(xgb_model_path)
     xgb_shap_df = explain_xgboost_shap(
