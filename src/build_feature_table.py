@@ -1,5 +1,52 @@
+"""
+文件名称：build_feature_table.py
+
+任务内容：
+1. 读取 clean_data.py 清洗后的用户行为 CSV 数据；
+2. 压缩 user_id、item_id、item_category、behavior_type 等字段的数据类型；
+3. 将清洗后的明细数据转换为 Parquet 格式；
+4. 构建用户、商品、时间、商品类别和用户—商品五类中间表；
+5. 对主要聚合字段进行抽样核验，验证中间表计算是否正确；
+6. 将本脚本生成的所有 processed 文件统一保存到以本脚本命名的目录中。
+
+明确输入文件名：
+- data/processed/user_behavior_cleaned.csv
+  由 clean_data.py 生成的清洗后用户行为明细数据。
+
+明确输出目录：
+- data/processed/build_feature_table/
+
+明确输出文件名：
+- data/processed/build_feature_table/user_behavior_cleaned.parquet
+- data/processed/build_feature_table/user_table.parquet
+- data/processed/build_feature_table/item_table.parquet
+- data/processed/build_feature_table/time_table.parquet
+- data/processed/build_feature_table/category_table.parquet
+- data/processed/build_feature_table/user_item_table.parquet
+
+目录规则：
+- 如果输出属于 data/processed，则放入：
+  data/processed/当前Python文件名/
+- 本文件名为 build_feature_table.py，因此输出目录为：
+  data/processed/build_feature_table/
+"""
+
+from pathlib import Path
+
 import pandas as pd
-df = pd.read_csv("../data/processed/user_behavior_cleaned.csv")
+
+# 自动定位项目根目录。当前文件位于项目根目录/src下。
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+
+# 本脚本专属processed输出目录
+PROCESSED_OUTPUT_DIR = PROJECT_ROOT / "data" / "processed" / "build_feature_table"
+PROCESSED_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# 输入文件仍从processed根目录读取
+INPUT_FILE = PROJECT_ROOT / "data" / "processed" / "user_behavior_cleaned.csv"
+
+df = pd.read_csv(INPUT_FILE)
 print(df.head())
 df.info()
 #压缩减少数据内存
@@ -10,10 +57,10 @@ df["behavior_type"] = df["behavior_type"].astype("int8")
 df["time"] = pd.to_datetime(df["time"])
 df.info()
 #将数据转换为parquet格式提升读写效率
-df.to_parquet("../data/processed/user_behavior_cleaned.parquet",index=False)
+df.to_parquet(PROCESSED_OUTPUT_DIR / "user_behavior_cleaned.parquet",index=False)
 print("保存成功！")
 #验证是否保存成功
-df2 = pd.read_parquet("../data/processed/user_behavior_cleaned.parquet")
+df2 = pd.read_parquet(PROCESSED_OUTPUT_DIR / "user_behavior_cleaned.parquet")
 print(df2.head())
 
 
@@ -45,7 +92,7 @@ user_table = (
 # 转化率：购买次数 / 总行为次数
 user_table["conversion_rate"] = user_table["buy_count"] / user_table["action_count"]
 print(user_table.head())
-user_table.to_parquet("../data/processed/user_table.parquet",index=False)
+user_table.to_parquet(PROCESSED_OUTPUT_DIR / "user_table.parquet",index=False)
 print("用户中间表保存完成")
 
 #########################################抽检##############################################
@@ -107,7 +154,7 @@ item_table["item_conversion_rate"] = (
     item_table["item_buy_count"] / item_table["item_action_count"]
 )
 print(item_table.head())
-item_table.to_parquet("../data/processed/item_table.parquet",index=False)
+item_table.to_parquet(PROCESSED_OUTPUT_DIR / "item_table.parquet",index=False)
 print("商品中间表保存完成")
 
 #########################################抽检##############################################
@@ -170,7 +217,7 @@ time_table["daily_conversion_rate"] = (
     time_table["daily_buy_count"] / time_table["daily_action_count"]
 )
 print(time_table.head())
-time_table.to_parquet("../data/processed/time_table.parquet",index=False)
+time_table.to_parquet(PROCESSED_OUTPUT_DIR / "time_table.parquet",index=False)
 print("时间中间表保存完成")
 
 #########################################抽检##############################################
@@ -227,7 +274,7 @@ category_table = (
 # 转化率
 category_table["conversion_rate"] = (category_table["buy_count"] /category_table["pv_count"])
 print(category_table.head())
-category_table.to_parquet("../data/processed/category_table.parquet",index=False)
+category_table.to_parquet(PROCESSED_OUTPUT_DIR / "category_table.parquet",index=False)
 print("商品类别中间表保存完成")
 
 #########################################抽检##############################################
@@ -275,7 +322,7 @@ user_item_table = (
         last_behavior_time=("time", "max")    # 最近交互时间
     ).reset_index())
 print(user_item_table.head())
-user_item_table.to_parquet("../data/processed/user_item_table.parquet",index=False)
+user_item_table.to_parquet(PROCESSED_OUTPUT_DIR / "user_item_table.parquet",index=False)
 print("用户商品中间表保存完成")
 
 #########################################抽检##############################################
