@@ -1,0 +1,64 @@
+"""
+京东用户行为预测工具包。
+
+提供数据处理、特征工程、模型训练、
+模型融合及业务A/B测试的统一调用接口。
+"""
+
+from .pipeline import (
+    run_script,
+    run_load_data,
+    run_parallel_read,
+    run_clean_data,
+    run_build_feature_table,
+    run_sqlite_analysis,
+    run_data_pipeline,
+    run_time_features,
+    run_user_lifecycle_features,
+    run_item_lifecycle_features,
+    run_behavior_sequence_features,
+    run_implicit_features,
+    run_business_features,
+    run_feature_preprocessing,
+    run_build_model_dataset,
+    run_feature_pipeline,
+    run_logistic_regression,
+    run_xgboost,
+    run_lightgbm,
+    run_traditional_models,
+    run_deep_learning_models,
+    run_model_fusion,
+    run_business_ab_test,
+    run_exploratory_analysis,
+    run_model_comparison,
+    run_full_pipeline,
+)
+
+__all__ = [
+    "run_script",
+    "run_load_data",
+    "run_parallel_read",
+    "run_clean_data",
+    "run_build_feature_table",
+    "run_sqlite_analysis",
+    "run_data_pipeline",
+    "run_time_features",
+    "run_user_lifecycle_features",
+    "run_item_lifecycle_features",
+    "run_behavior_sequence_features",
+    "run_implicit_features",
+    "run_business_features",
+    "run_feature_preprocessing",
+    "run_build_model_dataset",
+    "run_feature_pipeline",
+    "run_logistic_regression",
+    "run_xgboost",
+    "run_lightgbm",
+    "run_traditional_models",
+    "run_deep_learning_models",
+    "run_model_fusion",
+    "run_business_ab_test",
+    "run_exploratory_analysis",
+    "run_model_comparison",
+    "run_full_pipeline",
+]
